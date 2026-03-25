@@ -28,7 +28,7 @@ function IntakeForm() {
 
   // ── Google Sheets integration ──────────────────────────────────────────────
   // Paste your Apps Script Web App URL below after deploying GoogleAppsScript.js
-  const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/swestf.com/s/AKfycbxDn8hXQ92okCjTmqroEXJXjiL99f-rVooT6H2GzXnPFX0MW3ERI0hjaUntsV1rZbqjHA/exec';
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZiY-ugnjGikRSd8y6fqZ7kXxedba1qinczHRb5Z_KJogTd3lLTni-f83v7N_m445n/exec';
 
   const [saveStatus, setSaveStatus] = useState('');
 
@@ -50,9 +50,10 @@ function IntakeForm() {
     try {
       setSaveStatus('saving');
       fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify({
+  method: 'POST',
+  mode: 'no-cors',
+  headers: { 'Content-Type': 'text/plain' },
+  body: JSON.stringify({
           sessionId: sessionId,
           timestamp: new Date().toISOString(),
           formData: data,
