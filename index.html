@@ -49,16 +49,17 @@ function IntakeForm() {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') return;
     try {
       setSaveStatus('saving');
+      const payload = encodeURIComponent(JSON.stringify({
+        sessionId: sessionId,
+        timestamp: new Date().toISOString(),
+        formData: data,
+        isFinal: !!isFinal
+      }));
       fetch(APPS_SCRIPT_URL, {
-  method: 'POST',
-  mode: 'no-cors',
-  headers: { 'Content-Type': 'text/plain' },
-  body: JSON.stringify({
-          sessionId: sessionId,
-          timestamp: new Date().toISOString(),
-          formData: data,
-          isFinal: !!isFinal
-        })
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'payload=' + payload
       }).then(() => {
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus(''), 2500);
