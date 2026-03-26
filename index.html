@@ -21,7 +21,6 @@
 function IntakeForm() {
   const [formData, setFormData] = useState({});
   const [currentSection, setCurrentSection] = useState(0);
-  const [devSkipValidation, setDevSkipValidation] = useState(false);
   const [pendingCollegeName, setPendingCollegeName] = useState('');
   const [pendingCollegeCityState, setPendingCollegeCityState] = useState('');
   const formRef = useRef(null);
@@ -3734,24 +3733,6 @@ function IntakeForm() {
             borderTop: '1px solid #e5e7eb',
             background: '#f9fafb'
           }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                fontSize: '13px',
-                color: '#6b7280',
-                cursor: 'pointer'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={devSkipValidation}
-                  onChange={(e) => setDevSkipValidation(e.target.checked)}
-                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                />
-                Dev Mode: Skip validation
-              </label>
-            </div>
             {saveStatus === 'saving' && (
               <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>⏳ Saving...</div>
             )}
@@ -3786,14 +3767,11 @@ function IntakeForm() {
             {currentSection < sections.length - 1 ? (
               <button
                 onClick={() => {
-                  if (!devSkipValidation) {
-                    if (formRef.current && !formRef.current.reportValidity()) return;
-                  }
+                  if (formRef.current && !formRef.current.reportValidity()) return;
 
                   const currentSectionId = sections?.[currentSection]?.id;
-                  const isDevSkipOn = typeof devSkipValidation !== 'undefined' ? devSkipValidation : false;
 
-                  if (!isDevSkipOn && currentSectionId === 'section18') {
+                  if (currentSectionId === 'section18') {
                     if (getColleges().length === 0) {
                       alert('Please add at least one college before continuing.');
                       return;
@@ -3815,9 +3793,7 @@ function IntakeForm() {
             ) : (
               <button
                 onClick={() => {
-                  if (!devSkipValidation) {
-                    if (formRef.current && !formRef.current.reportValidity()) return;
-                  }
+                  if (formRef.current && !formRef.current.reportValidity()) return;
                   if (formData.acknowledgment) {
                     saveToSheet(formData, true);
                     setCurrentSection(currentSection + 1);
