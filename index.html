@@ -26,6 +26,14 @@ function IntakeForm() {
   const [pendingCollegeCityState, setPendingCollegeCityState] = useState('');
   const formRef = useRef(null);
 
+  // ── Resume / email gate ────────────────────────────────────────────────────
+  const [appStage, setAppStage] = useState('intro'); // 'intro' | 'email' | 'form'
+  const [clientEmail, setClientEmail] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const [resumeFound, setResumeFound] = useState(null); // { formData, currentSection } | null
+  // ── End resume state ───────────────────────────────────────────────────────
+
   // ── Google Sheets integration ──────────────────────────────────────────────
   // Paste your Apps Script Web App URL below after deploying GoogleAppsScript.js
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxFR8CLOYpGENlLenzRYcN6Bu6ax4iLHPjA7j_vH2Bs7Lcqx1jD9P0Gp8h3FfDpzn-xFA/exec';
@@ -45,7 +53,7 @@ function IntakeForm() {
     }
   });
 
-  const saveToSheet = (data, isFinal) => {
+  const saveToSheet = (data, isFinal, resumeSection) => {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') return;
     try {
       setSaveStatus('saving');
@@ -53,7 +61,9 @@ function IntakeForm() {
         sessionId: sessionId,
         timestamp: new Date().toISOString(),
         formData: data,
-        isFinal: !!isFinal
+        isFinal: !!isFinal,
+        clientEmail: clientEmail || '',
+        resumeSection: resumeSection ?? currentSection
       }));
       fetch(APPS_SCRIPT_URL, {
         method: 'POST',
@@ -70,6 +80,31 @@ function IntakeForm() {
     } catch(e) {
       console.error('Sheet save error:', e);
     }
+  };
+
+  // ── Email resume lookup (JSONP to avoid CORS) ──────────────────────────────
+  const lookupEmail = (email) => {
+    return new Promise((resolve) => {
+      const cbName = 'resumeCb_' + Date.now();
+      const timeoutId = setTimeout(() => {
+        delete window[cbName];
+        resolve({ status: 'not_found' });
+      }, 10000);
+      window[cbName] = (data) => {
+        clearTimeout(timeoutId);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        resolve(data);
+      };
+      const script = document.createElement('script');
+      script.onerror = () => {
+        clearTimeout(timeoutId);
+        delete window[cbName];
+        resolve({ status: 'not_found' });
+      };
+      script.src = APPS_SCRIPT_URL + '?action=lookup&email=' + encodeURIComponent(email) + '&callback=' + cbName;
+      document.head.appendChild(script);
+    });
   };
   // ── End Google Sheets integration ──────────────────────────────────────────
 
@@ -187,7 +222,7 @@ function IntakeForm() {
         {/* Header */}
         {sections[currentSection].id !== 'intro' && (
         <div style={{
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
+          background: 'linear-gradient(135deg, #064E3B 0%, #0a3528 100%)',
           padding: '40px',
           color: 'white',
           textAlign: 'center'
@@ -241,7 +276,7 @@ function IntakeForm() {
               <div style={{
                 width: `${((currentSection + 1) / (sections.length - 1)) * 100}%`,
                 height: '100%',
-                background: 'linear-gradient(90deg, #1e40af, #3b82f6)',
+                background: 'linear-gradient(90deg, #064E3B, #0a3528)',
                 transition: 'width 0.3s ease',
                 borderRadius: '4px'
               }} />
@@ -257,13 +292,14 @@ function IntakeForm() {
             color: '#111827',
             marginBottom: '30px',
             fontFamily: 'Georgia, serif',
-            borderBottom: '2px solid #1e40af',
+            borderBottom: '2px solid #0a3528',
             paddingBottom: '12px'
           }}>
             {sections[currentSection].title}
           </h2>
 
           {sections[currentSection].id === 'intro' && (
+            appStage === 'intro' ? (
             <PremiumHeroShell>
               <div
                 style={{
@@ -353,7 +389,7 @@ function IntakeForm() {
 
               <button
                 onClick={() => {
-                  setCurrentSection(currentSection + 1);
+                  setAppStage('email');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 style={{
@@ -384,6 +420,167 @@ function IntakeForm() {
               </button>
             </div>
             </PremiumHeroShell>
+            ) : (
+            /* ── Email / Resume Page ─────────────────────────────────────── */
+            <PremiumHeroShell>
+              <div style={{
+                maxWidth: '560px',
+                margin: '0 auto',
+                background: 'rgba(255,255,255,0.92)',
+                border: '2px solid #D4AF37',
+                borderRadius: '12px',
+                padding: '40px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.10)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+              }}>
+                {resumeFound ? (
+                  /* ── Resume prompt ── */
+                  <div>
+                    <div style={{ fontSize: '40px', textAlign: 'center', marginBottom: '16px' }}>👋</div>
+                    <h3 style={{
+                      fontSize: '24px', fontWeight: '700', color: '#1B2845',
+                      marginBottom: '8px', marginTop: 0, fontFamily: 'Georgia, serif',
+                      textAlign: 'center'
+                    }}>
+                      Welcome Back!
+                    </h3>
+                    <div style={{
+                      height: '3px', width: '64px', background: '#D4AF37',
+                      borderRadius: '999px', margin: '14px auto 20px'
+                    }} />
+                    <p style={{ fontSize: '15px', color: '#374151', lineHeight: '1.6', textAlign: 'center', marginBottom: '28px' }}>
+                      We found your saved progress for <strong>{clientEmail}</strong>. Would you like to pick up where you left off?
+                    </p>
+                    <button
+                      onClick={() => {
+                        setFormData(resumeFound.formData || {});
+                        setCurrentSection(resumeFound.currentSection || 1);
+                        setResumeFound(null);
+                        setAppStage('form');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      style={{
+                        width: '100%', padding: '14px 22px', fontSize: '16px',
+                        fontWeight: '700', color: 'white', background: '#064E3B',
+                        border: 'none', borderRadius: '10px', cursor: 'pointer',
+                        marginBottom: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.12)'
+                      }}
+                    >
+                      ✅ Resume Where I Left Off
+                    </button>
+                    <button
+                      onClick={() => {
+                        setFormData({});
+                        setCurrentSection(1);
+                        setResumeFound(null);
+                        setAppStage('form');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      style={{
+                        width: '100%', padding: '12px 22px', fontSize: '15px',
+                        fontWeight: '600', color: '#374151', background: 'white',
+                        border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer'
+                      }}
+                    >
+                      Start Fresh Instead
+                    </button>
+                  </div>
+                ) : (
+                  /* ── Email entry ── */
+                  <div>
+                    <h3 style={{
+                      fontSize: '26px', fontWeight: '700', color: '#1B2845',
+                      marginBottom: '8px', marginTop: 0, fontFamily: 'Georgia, serif'
+                    }}>
+                      Let's Get You Started
+                    </h3>
+                    <div style={{
+                      height: '3px', width: '64px', background: '#D4AF37',
+                      borderRadius: '999px', marginTop: '14px', marginBottom: '22px'
+                    }} />
+                    <p style={{ fontSize: '15px', color: '#374151', lineHeight: '1.6', marginBottom: '28px' }}>
+                      Enter your email address below. If you've started this form before, we'll pick up right where you left off. Otherwise, you'll begin fresh.
+                    </p>
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{
+                        display: 'block', fontSize: '14px', fontWeight: '600',
+                        color: '#374151', marginBottom: '8px'
+                      }}>
+                        Email Address <span style={{ color: '#dc2626' }}>*</span>
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="your@email.com"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && emailInput.trim()) {
+                            e.preventDefault();
+                            const email = emailInput.trim();
+                            setClientEmail(email);
+                            setResumeLoading(true);
+                            lookupEmail(email).then((result) => {
+                              setResumeLoading(false);
+                              if (result.status === 'found') {
+                                setResumeFound(result);
+                              } else {
+                                setFormData({});
+                                setCurrentSection(1);
+                                setAppStage('form');
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }
+                            });
+                          }
+                        }}
+                        style={{
+                          width: '100%', padding: '13px 16px', fontSize: '15px',
+                          border: '2px solid #e5e7eb', borderRadius: '8px',
+                          outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <button
+                      disabled={resumeLoading || !emailInput.trim()}
+                      onClick={() => {
+                        const email = emailInput.trim();
+                        if (!email) return;
+                        setClientEmail(email);
+                        setResumeLoading(true);
+                        lookupEmail(email).then((result) => {
+                          setResumeLoading(false);
+                          if (result.status === 'found') {
+                            setResumeFound(result);
+                          } else {
+                            setFormData({});
+                            setCurrentSection(1);
+                            setAppStage('form');
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        });
+                      }}
+                      style={{
+                        width: '100%', padding: '14px 22px', fontSize: '17px',
+                        fontWeight: '700', color: resumeLoading || !emailInput.trim() ? '#9ca3af' : '#1B2845',
+                        background: resumeLoading || !emailInput.trim() ? '#e5e7eb' : '#D4AF37',
+                        border: 'none', borderRadius: '10px',
+                        cursor: resumeLoading || !emailInput.trim() ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease', boxShadow: '0 6px 14px rgba(0,0,0,0.10)'
+                      }}
+                    >
+                      {resumeLoading ? '⏳ Checking...' : 'Continue →'}
+                    </button>
+                    <p style={{
+                      fontSize: '12px', color: '#9ca3af', textAlign: 'center',
+                      marginTop: '16px', marginBottom: 0
+                    }}>
+                      Your email is used only to save and restore your progress.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </PremiumHeroShell>
+            )
           )}
 
           {currentSection === 1 && (
@@ -2018,9 +2215,9 @@ function IntakeForm() {
                     padding: '12px 24px',
                     fontSize: '15px',
                     fontWeight: '600',
-                    color: '#1e40af',
+                    color: '#0a3528',
                     background: 'white',
-                    border: '2px solid #1e40af',
+                    border: '2px solid #0a3528',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease'
@@ -3570,7 +3767,9 @@ function IntakeForm() {
           }}>
             <button
               onClick={() => {
-                setCurrentSection(Math.max(0, currentSection - 1));
+                const prev = Math.max(0, currentSection - 1);
+                setCurrentSection(prev);
+                if (prev === 0) setAppStage('email');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               disabled={currentSection === 0}
@@ -3601,13 +3800,13 @@ function IntakeForm() {
                     }
                   }
 
-                  saveToSheet(formData, false);
+                  saveToSheet(formData, false, currentSection + 1);
                   setCurrentSection(currentSection + 1);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 style={{
                   ...buttonStyle,
-                  background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+                  background: '#064E3B',
                   color: 'white'
                 }}
               >
@@ -3795,7 +3994,7 @@ function FormField({ label, required, children, indent }) {
 const subsectionStyle = {
   fontSize: '18px',
   fontWeight: '600',
-  color: '#1e40af',
+  color: '#0a3528',
   marginBottom: '20px',
   paddingBottom: '8px',
   borderBottom: '1px solid #e5e7eb'
