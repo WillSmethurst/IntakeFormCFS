@@ -3849,8 +3849,7 @@ function IntakeForm() {
                   if (formRef.current && !formRef.current.reportValidity()) return;
                   if (formData.acknowledgment) {
                     saveToSheet(formData, true);
-                    setCurrentSection(currentSection + 1);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.open('https://meetings-na2.hubspot.com/will-smethurst/swfcp-website-financial-analysis', '_blank');
                   } else {
                     alert('Please check the acknowledgment box before submitting.');
                   }
@@ -3864,7 +3863,7 @@ function IntakeForm() {
                   cursor: formData.acknowledgment ? 'pointer' : 'not-allowed'
                 }}
               >
-                Submit Form
+                Next →
               </button>
             )}
           </div>
