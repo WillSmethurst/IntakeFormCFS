@@ -204,7 +204,6 @@ function IntakeForm() {
     { id: 'section19', title: 'Dependency Status' },
     { id: 'section20', title: 'Upload Award Letters' },
     { id: 'acknowledgment', title: 'Final Acknowledgment' },
-    { id: 'acknowledgment', title: 'Final Acknowledgment' },
     { id: 'thankyou', title: 'Thank You' }
   ];
 
@@ -3654,6 +3653,17 @@ function IntakeForm() {
                   Please review your information before submitting. You can navigate back through sections 
                   using the Previous button below.
                 </p>
+                <div style={{
+                  background: '#f0fdf4',
+                  border: '2px solid #064E3B',
+                  borderRadius: '8px',
+                  padding: '20px',
+                  marginTop: '16px'
+                }}>
+                  <p style={{ fontSize: '15px', color: '#111827', lineHeight: '1.7', margin: 0 }}>
+                    Now the next step is to schedule your call with experts to review your funding analysis. Please press <strong>Next</strong> to proceed with booking your financial analysis meeting.
+                  </p>
+                </div>
               </div>
             </form>
           )}
@@ -3800,7 +3810,7 @@ function IntakeForm() {
             >
               ← Previous
             </button>
-            {currentSection < sections.length - 1 ? (
+            {sections[currentSection].id !== 'acknowledgment' ? (
               <button
                 onClick={() => {
                   if (!devMode && formRef.current && !formRef.current.reportValidity()) return;
