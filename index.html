@@ -40,6 +40,7 @@ function IntakeForm() {
   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxFR8CLOYpGENlLenzRYcN6Bu6ax4iLHPjA7j_vH2Bs7Lcqx1jD9P0Gp8h3FfDpzn-xFA/exec';
 
   const [saveStatus, setSaveStatus] = useState('');
+  const [devMode, setDevMode] = useState(false);
 
   const [sessionId] = useState(() => {
     try {
@@ -3759,6 +3760,24 @@ function IntakeForm() {
             {saveStatus === 'error' && (
               <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '8px' }}>⚠ Save failed — check your Apps Script URL</div>
             )}
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                color: '#9ca3af'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={devMode}
+                  onChange={(e) => setDevMode(e.target.checked)}
+                  style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                />
+                Dev Mode: Skip Validation
+              </label>
+            </div>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between'
@@ -3784,7 +3803,7 @@ function IntakeForm() {
             {currentSection < sections.length - 1 ? (
               <button
                 onClick={() => {
-                  if (formRef.current && !formRef.current.reportValidity()) return;
+                  if (!devMode && formRef.current && !formRef.current.reportValidity()) return;
 
                   const currentSectionId = sections?.[currentSection]?.id;
 
