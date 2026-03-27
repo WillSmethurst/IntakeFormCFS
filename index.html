@@ -4030,16 +4030,15 @@ function UppyUploadSection({ clientEmail, sessionId, uploads, onUploadsChange, n
     uppy.use(window.Uppy.XHRUpload, {
       endpoint: WORKER_URL,
       method: 'POST',
-      formData: false,
+      formData: true,
+      fieldName: 'file',
       getResponseData(responseText) {
         try { return JSON.parse(responseText); } catch { return {}; }
       },
-      headers: (file) => ({
-        'Content-Type': file.type || 'application/octet-stream',
-        'X-File-Name': file.name,
+      headers: {
         'X-Client-Email': clientEmail || '',
         'X-Session-Id': sessionId || ''
-      })
+      }
     });
 
     uppy.on('upload-success', (file, response) => {
