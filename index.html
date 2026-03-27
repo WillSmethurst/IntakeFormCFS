@@ -7,6 +7,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link href="https://releases.transloadit.com/uppy/v3.21.0/uppy.min.css" rel="stylesheet" />
+  <script src="https://releases.transloadit.com/uppy/v3.21.0/uppy.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { margin: 0; padding: 0; }
@@ -199,6 +201,8 @@ function IntakeForm() {
     { id: 'section17', title: 'Non-Custodial Parent (if applicable)' },
     { id: 'section18', title: 'Colleges Under Consideration, Award Letter / Funding Evaluations' },
     { id: 'section19', title: 'Dependency Status' },
+    { id: 'section20', title: 'Upload Award Letters' },
+    { id: 'acknowledgment', title: 'Final Acknowledgment' },
     { id: 'acknowledgment', title: 'Final Acknowledgment' },
     { id: 'thankyou', title: 'Thank You' }
   ];
@@ -3589,7 +3593,20 @@ function IntakeForm() {
             </form>
           )}
 
-          {currentSection === 20 && (
+          {sections[currentSection].id === 'section20' && (
+            <form ref={formRef} onSubmit={(e) => e.preventDefault()}>
+              <UppyUploadSection
+                clientEmail={clientEmail}
+                sessionId={sessionId}
+                uploads={formData.awardLetterUploads || []}
+                onUploadsChange={(uploads) => updateField('awardLetterUploads', uploads)}
+                noLetters={formData.noAwardLettersYet || false}
+                onNoLettersChange={(val) => updateField('noAwardLettersYet', val)}
+              />
+            </form>
+          )}
+
+          {currentSection === 21 && (
             <form ref={formRef} onSubmit={(e) => e.preventDefault()}>
               <div style={{
                 background: '#f0f9ff',
@@ -3778,6 +3795,13 @@ function IntakeForm() {
                     }
                   }
 
+                  if (currentSectionId === 'section20') {
+                    if (!formData.noAwardLettersYet && (!formData.awardLetterUploads || formData.awardLetterUploads.length === 0)) {
+                      alert('Please upload at least one award letter, or check the box if you do not yet have award letters.');
+                      return;
+                    }
+                  }
+
                   saveToSheet(formData, false, currentSection + 1);
                   setCurrentSection(currentSection + 1);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3940,6 +3964,131 @@ function DateInput({ value, onChange, required, disabled }) {
           {error}
         </div>
       )}
+    </div>
+  );
+}
+
+function UppyUploadSection({ clientEmail, sessionId, uploads, onUploadsChange, noLetters, onNoLettersChange }) {
+  const containerRef = React.useRef(null);
+  const uploadsRef = React.useRef(uploads);
+  const WORKER_URL = 'https://intake-upload-worker.will-c65.workers.dev';
+
+  React.useEffect(() => {
+    uploadsRef.current = uploads;
+  }, [uploads]);
+
+  React.useEffect(() => {
+    if (!window.Uppy || !containerRef.current) return;
+
+    const uppy = new window.Uppy.Uppy({
+      restrictions: {
+        maxFileSize: 25 * 1024 * 1024,
+        allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png', '.pdf', '.jpg', '.jpeg', '.png'],
+        maxNumberOfFiles: 20
+      },
+      autoProceed: false
+    });
+
+    uppy.use(window.Uppy.Dashboard, {
+      target: containerRef.current,
+      inline: true,
+      height: 350,
+      showProgressDetails: true,
+      note: 'PDF, JPG, or PNG only · Max 25 MB per file',
+      proudlyDisplayPoweredByUppy: false
+    });
+
+    uppy.use(window.Uppy.AwsS3, {
+      async getUploadParameters(file) {
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            sessionId,
+            clientEmail
+          })
+        });
+        if (!res.ok) throw new Error('Failed to get upload URL');
+        const { url, key } = await res.json();
+        uppy.setFileMeta(file.id, { r2Key: key });
+        return {
+          method: 'PUT',
+          url,
+          fields: {},
+          headers: { 'Content-Type': file.type || 'application/octet-stream' }
+        };
+      }
+    });
+
+    uppy.on('upload-success', (file) => {
+      const key = file.meta.r2Key || file.name;
+      const updated = [...uploadsRef.current, { name: file.name, key }];
+      uploadsRef.current = updated;
+      onUploadsChange(updated);
+    });
+
+    uppy.on('upload-error', (file, error) => {
+      console.error('Upload error for', file.name, error);
+    });
+
+    return () => {
+      uppy.destroy();
+    };
+  }, []);
+
+  return (
+    <div>
+      <p style={{ color: '#374151', fontSize: '15px', lineHeight: '1.7', marginBottom: '20px' }}>
+        Please upload your student's award letter(s) from each college they have been accepted to.
+        You may upload multiple files — one per college. Accepted formats: <strong>PDF, JPG, PNG</strong>. Maximum <strong>25 MB</strong> per file.
+      </p>
+
+      <div ref={containerRef} style={{ marginBottom: '20px' }} />
+
+      {uploads.length > 0 && (
+        <div style={{
+          background: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          borderRadius: '8px',
+          padding: '14px 18px',
+          marginBottom: '16px',
+          color: '#166534',
+          fontSize: '14px',
+          fontWeight: '500'
+        }}>
+          ✓ {uploads.length} file{uploads.length !== 1 ? 's' : ''} successfully uploaded
+        </div>
+      )}
+
+      <div style={{
+        background: '#fffbeb',
+        border: '1px solid #fde68a',
+        borderRadius: '8px',
+        padding: '16px 20px',
+        marginTop: '8px'
+      }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          color: '#374151',
+          lineHeight: '1.5'
+        }}>
+          <input
+            type="checkbox"
+            checked={noLetters}
+            onChange={(e) => onNoLettersChange(e.target.checked)}
+            style={{ width: '16px', height: '16px', marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
+          />
+          <span>
+            <strong>I do not yet have award letters to upload</strong> — checking this box will allow you to proceed without uploading files now. You can submit your award letters to us directly when you receive them.
+          </span>
+        </label>
+      </div>
     </div>
   );
 }
