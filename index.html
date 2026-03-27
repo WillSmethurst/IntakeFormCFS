@@ -4017,32 +4017,23 @@ function UppyUploadSection({ clientEmail, sessionId, uploads, onUploadsChange, n
       proudlyDisplayPoweredByUppy: false
     });
 
-    uppy.use(window.Uppy.AwsS3, {
-      async getUploadParameters(file) {
-        const res = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: file.type || 'application/octet-stream',
-            sessionId,
-            clientEmail
-          })
-        });
-        if (!res.ok) throw new Error('Failed to get upload URL');
-        const { url, key } = await res.json();
-        uppy.setFileMeta(file.id, { r2Key: key });
-        return {
-          method: 'PUT',
-          url,
-          fields: {},
-          headers: {}
-        };
-      }
+    uppy.use(window.Uppy.XHRUpload, {
+      endpoint: WORKER_URL,
+      method: 'POST',
+      formData: false,
+      getResponseData(responseText) {
+        try { return JSON.parse(responseText); } catch { return {}; }
+      },
+      headers: (file) => ({
+        'Content-Type': file.type || 'application/octet-stream',
+        'X-File-Name': file.name,
+        'X-Client-Email': clientEmail || '',
+        'X-Session-Id': sessionId || ''
+      })
     });
 
-    uppy.on('upload-success', (file) => {
-      const key = file.meta.r2Key || file.name;
+    uppy.on('upload-success', (file, response) => {
+      const key = response.body?.key || file.name;
       const updated = [...uploadsRef.current, { name: file.name, key }];
       uploadsRef.current = updated;
       onUploadsChange(updated);
