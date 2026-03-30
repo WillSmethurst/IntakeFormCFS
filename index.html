@@ -127,6 +127,17 @@ function IntakeForm() {
     };
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('scheduled') === 'true') {
+      const scheduledIdx = sections.findIndex(s => s.id === 'scheduled');
+      if (scheduledIdx !== -1) {
+        setCurrentSection(scheduledIdx);
+        setAppStage('form');
+      }
+    }
+  }, []);
+
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -204,6 +215,7 @@ function IntakeForm() {
     { id: 'section19', title: 'Dependency Status' },
     { id: 'section20', title: 'Upload Award Letters' },
     { id: 'acknowledgment', title: 'Final Acknowledgment' },
+    { id: 'scheduled', title: 'Meeting Confirmed' },
     { id: 'thankyou', title: 'Thank You' }
   ];
 
@@ -223,7 +235,7 @@ function IntakeForm() {
         overflow: 'hidden'
       }}>
         {/* Header */}
-        {sections[currentSection].id !== 'intro' && (
+        {sections[currentSection].id !== 'intro' && sections[currentSection].id !== 'scheduled' && (
         <div style={{
           background: 'linear-gradient(135deg, #064E3B 0%, #0a3528 100%)',
           padding: '40px',
@@ -249,7 +261,7 @@ function IntakeForm() {
         </div>
         )}
 
-        {sections[currentSection].id !== 'intro' && sections[currentSection].id !== 'thankyou' && (
+        {sections[currentSection].id !== 'intro' && sections[currentSection].id !== 'thankyou' && sections[currentSection].id !== 'scheduled' && (
           <div style={{
             padding: '30px 40px 20px',
             borderBottom: '1px solid #e5e7eb'
@@ -3753,9 +3765,85 @@ function IntakeForm() {
             </div>
             </PremiumHeroShell>
           )}
+
+          {sections[currentSection].id === 'scheduled' && (
+            <PremiumHeroShell>
+              <div
+                style={{
+                  maxWidth: '720px',
+                  margin: '0 auto',
+                  background: 'rgba(255,255,255,0.92)',
+                  border: '2px solid #D4AF37',
+                  borderRadius: '12px',
+                  padding: '60px 40px',
+                  boxShadow: '0 12px 34px rgba(0,0,0,0.12)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '52px', marginBottom: '16px' }}>🎉</div>
+                <h1 style={{
+                  fontSize: '38px',
+                  fontWeight: '700',
+                  color: '#1B2845',
+                  marginBottom: '8px',
+                  marginTop: 0,
+                  fontFamily: 'Georgia, serif'
+                }}>
+                  Congratulations!
+                </h1>
+                <div style={{
+                  height: '3px',
+                  width: '64px',
+                  background: '#D4AF37',
+                  borderRadius: '999px',
+                  margin: '14px auto 24px'
+                }} />
+                <p style={{
+                  fontSize: '17px',
+                  lineHeight: '1.8',
+                  color: '#111827',
+                  marginBottom: '36px',
+                  maxWidth: '560px',
+                  marginLeft: 'auto',
+                  marginRight: 'auto'
+                }}>
+                  You have confirmed your time with our team to review your financial analysis. Please be on the lookout for an email from our team prior to your meeting with either, your <strong>40 page funding report</strong> OR your <strong>FAFSA line-by-line answer sheet</strong>.
+                </p>
+                <button
+                  onClick={() => { window.location.href = 'https://www.swestf.com'; }}
+                  style={{
+                    padding: '16px 40px',
+                    fontSize: '17px',
+                    fontWeight: '700',
+                    color: '#1B2845',
+                    background: '#D4AF37',
+                    border: 'none',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    boxShadow: '0 6px 14px rgba(0,0,0,0.10)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#c49d2f';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 18px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = '#D4AF37';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.10)';
+                  }}
+                >
+                  Go Back To Website
+                </button>
+              </div>
+            </PremiumHeroShell>
+          )}
         </div>
 
-        {sections[currentSection].id !== 'intro' && sections[currentSection].id !== 'thankyou' && (
+        {sections[currentSection].id !== 'intro' && sections[currentSection].id !== 'thankyou' && sections[currentSection].id !== 'scheduled' && (
           <div style={{
             padding: '30px 40px',
             borderTop: '1px solid #e5e7eb',
